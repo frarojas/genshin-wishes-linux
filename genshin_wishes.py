@@ -3,9 +3,11 @@
 Extractor de Historial de Deseos (Gacha) de Genshin Impact para Linux.
 
 Busca automáticamente el archivo de caché web (`data_2`) en instalaciones de:
+- Twintail Launcher (Nativo, Flatpak y base de datos SQLite storage.db)
 - An Anime Game Launcher (Nativo y Flatpak)
 - Sleepy Launcher (Nativo y Flatpak)
-- Rutas personalizadas o búsqueda automática en $HOME
+- Heroic Games Launcher / Lutris
+- Rutas personalizadas o búsqueda rápida optimizada en $HOME
 
 Extrae la URL autenticada (authkey), valida la sesión contra la API oficial de
 HoYoverse y descarga la lista completa de deseos en formato JSON (incluyendo
@@ -19,6 +21,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -54,8 +57,8 @@ URL_REGEX = re.compile(
 
 def find_data2_files(custom_path: Optional[str] = None) -> List[Path]:
     """
-    Busca todos los archivos `data_2` dentro de `webCaches` para An Anime Game Launcher,
-    Sleepy Launcher u otras instalaciones en Linux.
+    Busca todos los archivos `data_2` dentro de `webCaches` para Twintail Launcher,
+    An Anime Game Launcher, Sleepy Launcher, Heroic, Lutris u otras instalaciones en Linux.
     Retorna la lista ordenada desde el modificado más recientemente al más antiguo.
     """
     home = Path.home()
@@ -67,35 +70,73 @@ def find_data2_files(custom_path: Optional[str] = None) -> List[Path]:
             return [p]
         elif p.is_dir():
             candidates.extend(p.rglob("webCaches/*/Cache/Cache_Data/data_2"))
-            candidates.extend(p.rglob("data_2"))
+            if not candidates:
+                candidates.extend(p.rglob("data_2"))
             return sorted(set(candidates), key=lambda x: x.stat().st_mtime, reverse=True)
 
-    # Rutas conocidas de An Anime Game Launcher / Sleepy Launcher (Nativo y Flatpak)
+    # 1. Variable de entorno de Twintail Launcher (si está definida)
+    twintail_env = os.environ.get("TWINTAIL_GAME_DIR")
+    if twintail_env and os.path.isdir(twintail_env):
+        candidates.extend(Path(twintail_env).rglob("webCaches/*/Cache/Cache_Data/data_2"))
+
+    # 2. Rutas conocidas de launchers en Linux (Twintail, AAGL, Sleepy, Heroic, Lutris)
     known_base_dirs = [
+        # Twintail Launcher (Nativo y Flatpak)
+        home / ".local/share/twintaillauncher/games",
+        home / ".var/app/app.twintaillauncher.ttl/data/twintaillauncher/games",
+        # An Anime Game Launcher (Nativo y Flatpak)
         home / ".local/share/anime-game-launcher",
         home / ".var/app/moe.launcher.an-anime-game-launcher/data/anime-game-launcher",
+        # Sleepy Launcher (Nativo y Flatpak)
         home / ".local/share/sleepy-launcher",
         home / ".var/app/moe.launcher.sleepy-launcher/data/sleepy-launcher",
+        # Carpetas comunes en $HOME/Games
         home / "Games/anime-game-launcher",
         home / "Games/genshin-impact",
+        home / "Games/Genshin Impact",
+        home / "Games/Heroic/GenshinImpact",
+        home / "Games/Heroic/Genshin Impact",
+        home / ".var/app/com.heroicgameslauncher.hgl/Games/Heroic/GenshinImpact",
+        home / ".var/app/com.heroicgameslauncher.hgl/Games/Heroic/Genshin Impact",
     ]
 
     for base in known_base_dirs:
         if base.exists():
             candidates.extend(base.rglob("webCaches/*/Cache/Cache_Data/data_2"))
 
-    # También revisar si hay un config.json del launcher que apunte a otro disco/carpeta
+    # 3. Consultar SQLite `storage.db` de Twintail Launcher (por si instaló el juego en otro disco)
+    twintail_dbs = [
+        home / ".local/share/twintaillauncher/storage.db",
+        home / ".var/app/app.twintaillauncher.ttl/data/twintaillauncher/storage.db",
+    ]
+    for db_path in twintail_dbs:
+        if db_path.is_file():
+            try:
+                conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+                cur = conn.cursor()
+                for (inst_dir,) in cur.execute("SELECT directory FROM install").fetchall():
+                    if inst_dir and os.path.isdir(inst_dir):
+                        candidates.extend(Path(inst_dir).rglob("webCaches/*/Cache/Cache_Data/data_2"))
+                for (def_dir,) in cur.execute("SELECT default_game_path FROM settings").fetchall():
+                    if def_dir and os.path.isdir(def_dir):
+                        candidates.extend(Path(def_dir).rglob("webCaches/*/Cache/Cache_Data/data_2"))
+                conn.close()
+            except Exception:
+                pass
+
+    # 4. Revisar `config.json` de An Anime Game Launcher / Sleepy Launcher (por si apunta a otro disco)
     config_files = [
         home / ".local/share/anime-game-launcher/config.json",
         home / ".var/app/moe.launcher.an-anime-game-launcher/config/anime-game-launcher/config.json",
         home / ".var/app/moe.launcher.an-anime-game-launcher/data/anime-game-launcher/config.json",
         home / ".config/anime-game-launcher/config.json",
+        home / ".local/share/sleepy-launcher/config.json",
+        home / ".var/app/moe.launcher.sleepy-launcher/config/sleepy-launcher/config.json",
     ]
     for cfg in config_files:
         if cfg.is_file():
             try:
                 data = json.loads(cfg.read_text(encoding="utf-8", errors="ignore"))
-                # Buscar rutas dentro del JSON de configuración
                 game_path = (
                     data.get("game", {}).get("path", {}).get("global")
                     or data.get("game", {}).get("path", {}).get("china")
@@ -105,7 +146,7 @@ def find_data2_files(custom_path: Optional[str] = None) -> List[Path]:
             except Exception:
                 pass
 
-    # Si no se encontró en las rutas estándar, hacer búsqueda rápida en $HOME por GenshinImpact_Data
+    # 5. Si no se encontró en las rutas estándar, hacer búsqueda rápida en $HOME excluyendo cachés pesadas
     if not candidates:
         print("[*] No se encontró en las rutas por defecto. Buscando GenshinImpact_Data en $HOME...")
         try:
@@ -114,7 +155,37 @@ def find_data2_files(custom_path: Optional[str] = None) -> List[Path]:
                     "find",
                     str(home),
                     "-maxdepth",
-                    "7",
+                    "10",
+                    "(",
+                    "-name",
+                    ".cache",
+                    "-o",
+                    "-name",
+                    "cache",
+                    "-o",
+                    "-name",
+                    "mesa_shader_cache",
+                    "-o",
+                    "-name",
+                    "WebKitCache",
+                    "-o",
+                    "-name",
+                    "compatibility",
+                    "-o",
+                    "-name",
+                    ".git",
+                    "-o",
+                    "-name",
+                    "node_modules",
+                    "-o",
+                    "-name",
+                    ".cargo",
+                    "-o",
+                    "-name",
+                    ".rustup",
+                    ")",
+                    "-prune",
+                    "-o",
                     "(",
                     "-name",
                     "GenshinImpact_Data",
@@ -124,10 +195,11 @@ def find_data2_files(custom_path: Optional[str] = None) -> List[Path]:
                     ")",
                     "-type",
                     "d",
+                    "-print",
                 ],
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=20,
             )
             for line in proc.stdout.splitlines():
                 d = Path(line.strip())

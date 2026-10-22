@@ -2,13 +2,13 @@
 
 Herramienta en Python (sin dependencias externas) para extraer la URL autenticada de deseos (Gacha) de **Genshin Impact en Linux** y descargar el historial completo de tiradas directamente desde la API oficial de HoYoverse.
 
-Compatible con instalaciones nativas y Flatpak de **An Anime Game Launcher**, **Sleepy Launcher**, Lutris, Heroic o cualquier prefijo de Wine/Proton.
+Compatible con instalaciones nativas y Flatpak de **Twintail Launcher**, **An Anime Game Launcher**, **Sleepy Launcher**, Lutris, Heroic o cualquier prefijo de Wine/Proton.
 
 ---
 
 ## 🚀 Características
 
-- **Detección automática en Linux**: Localiza automáticamente el archivo binario `webCaches/*/Cache/Cache_Data/data_2` en las rutas nativas y Flatpak de *An Anime Game Launcher* / *Sleepy Launcher* (incluyendo lectura de `config.json` para instalaciones en otros discos).
+- **Detección automática en Linux**: Localiza automáticamente el archivo binario `webCaches/*/Cache/Cache_Data/data_2` en las rutas nativas y Flatpak de *Twintail Launcher* (incluyendo lectura de su base de datos SQLite `storage.db`), *An Anime Game Launcher* y *Sleepy Launcher* (incluyendo lectura de `config.json` para instalaciones en otros discos).
 - **Lectura segura en caliente**: Copia el archivo `data_2` a un directorio temporal antes de analizarlo, evitando bloqueos de archivos mientras el juego está abierto.
 - **Validación de sesión (`authkey`)**: Extrae todas las URLs del caché ordenadas desde la más reciente y verifica contra la API de HoYoverse cuál sigue activa.
 - **Copia automática al portapapeles**: Si tienes `wl-copy` (Wayland), `xclip` o `xsel` (X11), copia la URL válida directamente al portapapeles para pegarla en sitios como [Paimon.moe](https://paimon.moe).
