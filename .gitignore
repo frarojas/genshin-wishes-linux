@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Exported wish files (prevent leaking personal UID / wish history)
+genshin_wishes_*.json
+genshin_wishes_*.csv
+wish-history-url.txt
+data_2
+
+# IDE
+.vscode/
+.idea/
+*.swp

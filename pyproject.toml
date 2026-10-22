@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genshin-wishes-linux"
+version = "1.0.0"
+description = "Extractor de URL y descargador de historial de deseos (Gacha) de Genshin Impact para Linux"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "frarojas", email = "fvrl.cr@gmail.com" }
+]
+keywords = ["genshin-impact", "gacha", "wishes", "linux", "uigf", "paimon-moe"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://github.com/frarojas/genshin-wishes-linux"
+Repository = "https://github.com/frarojas/genshin-wishes-linux.git"
+
+[project.scripts]
+genshin-wishes = "genshin_wishes:main"
+
+[tool.setuptools]
+py-modules = ["genshin_wishes"]
