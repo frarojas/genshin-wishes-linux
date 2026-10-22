@@ -29,7 +29,7 @@ Compatible con instalaciones nativas y Flatpak de **Twintail Launcher**, **An An
 
 ## 🛠️ Instalación
 
-Puedes clonar el repositorio e instalarlo con `pipx` / `pip`, o ejecutar el script directamente:
+Puedes clonar el repositorio y ejecutar el script directamente:
 
 ```bash
 git clone https://github.com/frarojas/genshin-wishes-linux.git
@@ -37,11 +37,18 @@ cd genshin-wishes-linux
 chmod +x genshin_wishes.py
 ```
 
-También puedes instalarlo como comando global en tu usuario:
+Si quieres instalarlo como comando global (`genshin-wishes`) en tu usuario para ejecutarlo desde cualquier carpeta, elige cualquiera de estas opciones compatibles con distribuciones modernas (PEP 668):
 
 ```bash
-pip install --user .
-# Ahora puedes ejecutar `genshin-wishes` desde cualquier carpeta
+# Opción A (Recomendada, sin dependencias ni entornos extra): enlace simbólico en ~/.local/bin
+mkdir -p ~/.local/bin
+ln -sf "$PWD/genshin_wishes.py" ~/.local/bin/genshin-wishes
+
+# Opción B: usando uv
+uv tool install .
+
+# Opción C: usando pipx
+pipx install .
 ```
 
 ---

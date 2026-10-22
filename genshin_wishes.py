@@ -239,10 +239,21 @@ def extract_urls_from_data2(data2_path: Path) -> List[str]:
 
             parsed = urllib.parse.urlparse(url)
             qs = urllib.parse.parse_qs(parsed.query)
+
+            # Ignorar URLs de encuestas u otros eventos que no sean del historial de gachapón
+            if qs.get("auth_appid", [""])[0] != "webview_gacha":
+                continue
+
             if "authkey" in qs:
                 authkey = qs["authkey"][0]
                 if authkey not in seen:
                     seen.add(authkey)
+                    # Limpiar parámetros de paginación (page, size, begin_id, end_id, gacha_type)
+                    # que la caché agrega al navegar páginas, ya que begin_id rompe paimon.moe
+                    if "game_biz=" in url:
+                        base_part, biz_part = url.split("game_biz=", 1)
+                        biz_val = biz_part.split("&")[0]
+                        url = f"{base_part}game_biz={biz_val}"
                     urls.append(url)
         except Exception:
             continue
